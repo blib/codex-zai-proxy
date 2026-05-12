@@ -152,6 +152,12 @@ impl Proxy {
         let message: Value =
             serde_json::from_str(line).context("client message is not valid JSON")?;
         let is_notification = json_rpc_id(&message).is_none();
+        let method = json_rpc_method(&message).unwrap_or("<unknown>");
+        debug!(
+            method,
+            notification = is_notification,
+            "proxying MCP client message"
+        );
         let upstream = self.send_upstream(line)?;
 
         if is_notification {
@@ -300,6 +306,10 @@ fn parse_json_message(raw: &str) -> std::result::Result<Option<String>, ProxyErr
 
 fn json_rpc_id(message: &Value) -> Option<&Value> {
     message.as_object()?.get("id")
+}
+
+fn json_rpc_method(message: &Value) -> Option<&str> {
+    message.as_object()?.get("method")?.as_str()
 }
 
 fn json_rpc_error_for_line(line: &str, code: i64, message: &str) -> Option<String> {
