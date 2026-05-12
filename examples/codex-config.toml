@@ -1,0 +1,20 @@
+[mcp_servers.web_reader]
+command = "/Users/blib/.local/bin/codex-zai-proxy"
+args = [
+  "--upstream-url", "https://api.z.ai/api/mcp/web_reader/mcp",
+  "--bearer-token-env", "ZAI_MCP_TOKEN",
+]
+
+[mcp_servers.web_search]
+command = "/Users/blib/.local/bin/codex-zai-proxy"
+args = [
+  "--upstream-url", "https://api.z.ai/api/mcp/web_search_prime/mcp",
+  "--bearer-token-env", "ZAI_MCP_TOKEN",
+]
+
+[mcp_servers.zread]
+command = "/Users/blib/.local/bin/codex-zai-proxy"
+args = [
+  "--upstream-url", "https://api.z.ai/api/mcp/zread/mcp",
+  "--bearer-token-env", "ZAI_MCP_TOKEN",
+]
