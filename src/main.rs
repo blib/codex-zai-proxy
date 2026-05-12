@@ -1,4 +1,5 @@
 use std::io::{self, BufReader};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -20,6 +21,10 @@ struct Args {
     /// Literal bearer token. Prefer --bearer-token-env for real use.
     #[arg(long, hide_env_values = true)]
     bearer_token: Option<String>,
+
+    /// Read KEY=VALUE pairs from a dotenv-style file. Can be repeated.
+    #[arg(long = "env-file")]
+    env_files: Vec<PathBuf>,
 
     /// Extra upstream header in NAME=VALUE form. Can be repeated.
     #[arg(long = "header")]
@@ -50,6 +55,7 @@ fn main() -> Result<()> {
         upstream_url: args.upstream_url,
         bearer_token: args.bearer_token,
         bearer_token_env: args.bearer_token_env,
+        env_files: args.env_files,
         headers: args.headers,
         connect_timeout: Duration::from_secs(args.connect_timeout_secs),
         request_timeout: Duration::from_secs(args.request_timeout_secs),

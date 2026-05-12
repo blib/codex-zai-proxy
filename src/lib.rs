@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::env;
+use std::fs;
 use std::io::{BufRead, Write};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::{json, Value};
@@ -35,6 +37,7 @@ pub struct ProxyConfig {
     pub upstream_url: String,
     pub bearer_token: Option<String>,
     pub bearer_token_env: Option<String>,
+    pub env_files: Vec<PathBuf>,
     pub headers: Vec<String>,
     pub connect_timeout: Duration,
     pub request_timeout: Duration,
@@ -70,9 +73,17 @@ impl ProxyConfig {
         }
 
         if let Some(name) = &self.bearer_token_env {
-            let token = env::var(name)
-                .with_context(|| format!("environment variable {name} is not set"))?;
-            return Ok(Some(token));
+            if let Ok(token) = env::var(name) {
+                return Ok(Some(token));
+            }
+
+            for path in &self.env_files {
+                if let Some(token) = read_env_file_value(path, name)? {
+                    return Ok(Some(token));
+                }
+            }
+
+            bail!("environment variable {name} is not set");
         }
 
         Ok(None)
@@ -229,6 +240,41 @@ pub fn parse_header_arg(raw: &str) -> Result<(HeaderName, HeaderValue)> {
     let value = HeaderValue::from_str(value.trim())
         .with_context(|| format!("invalid HTTP header value for {name}"))?;
     Ok((name, value))
+}
+
+pub fn read_env_file_value(path: &Path, key: &str) -> Result<Option<String>> {
+    let text = fs::read_to_string(path)
+        .with_context(|| format!("failed to read env file {}", path.display()))?;
+
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let Some((raw_key, raw_value)) = line.split_once('=') else {
+            continue;
+        };
+
+        if raw_key.trim() == key {
+            return Ok(Some(unquote_env_value(raw_value.trim()).to_owned()));
+        }
+    }
+
+    Ok(None)
+}
+
+fn unquote_env_value(value: &str) -> &str {
+    if value.len() >= 2 {
+        let bytes = value.as_bytes();
+        let first = bytes[0];
+        let last = bytes[value.len() - 1];
+        if (first == b'"' && last == b'"') || (first == b'\'' && last == b'\'') {
+            return &value[1..value.len() - 1];
+        }
+    }
+
+    value
 }
 
 pub fn normalize_upstream_body(
@@ -413,6 +459,7 @@ mod tests {
             upstream_url: "https://example.com/mcp".to_owned(),
             bearer_token: None,
             bearer_token_env: Some("CODEX_ZAI_PROXY_TEST_TOKEN".to_owned()),
+            env_files: vec![],
             headers: vec![],
             connect_timeout: Duration::from_secs(5),
             request_timeout: Duration::from_secs(30),
@@ -424,6 +471,37 @@ mod tests {
         assert_eq!(
             headers.get(AUTHORIZATION).unwrap().to_str().unwrap(),
             "Bearer secret-token"
+        );
+    }
+
+    #[test]
+    fn builds_authorization_header_from_env_file() {
+        env::remove_var("CODEX_ZAI_PROXY_TEST_FILE_TOKEN");
+        let dir = env::temp_dir().join(format!("codex-zai-proxy-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let env_file = dir.join("test.env");
+        fs::write(
+            &env_file,
+            "\n# ignored\nOTHER=value\nCODEX_ZAI_PROXY_TEST_FILE_TOKEN=\"file-token\"\n",
+        )
+        .unwrap();
+
+        let config = ProxyConfig {
+            upstream_url: "https://example.com/mcp".to_owned(),
+            bearer_token: None,
+            bearer_token_env: Some("CODEX_ZAI_PROXY_TEST_FILE_TOKEN".to_owned()),
+            env_files: vec![env_file],
+            headers: vec![],
+            connect_timeout: Duration::from_secs(5),
+            request_timeout: Duration::from_secs(30),
+            compat_mode: CompatMode::Auto,
+        };
+
+        let headers = config.build_upstream_headers().unwrap();
+
+        assert_eq!(
+            headers.get(AUTHORIZATION).unwrap().to_str().unwrap(),
+            "Bearer file-token"
         );
     }
 }

@@ -39,6 +39,7 @@ cargo test
 ```bash
 codex-zai-proxy \
   --upstream-url https://api.z.ai/api/mcp/zread/mcp \
+  --env-file ~/.zai.env \
   --bearer-token-env ZAI_MCP_TOKEN
 ```
 
@@ -47,6 +48,7 @@ Options:
 - `--upstream-url <URL>`: required Streamable HTTP MCP endpoint.
 - `--bearer-token-env <ENV_NAME>`: read a bearer token from an environment variable.
 - `--bearer-token <TOKEN>`: pass a bearer token directly. Useful for local tests; avoid it in shell history.
+- `--env-file <PATH>`: read dotenv-style `KEY=VALUE` entries when the process environment does not contain `--bearer-token-env`. Can be repeated.
 - `--header <NAME=VALUE>`: add an upstream HTTP header. Can be repeated.
 - `--connect-timeout-secs <N>`: TCP/TLS connection timeout. Default: `10`.
 - `--request-timeout-secs <N>`: full upstream request timeout. Default: `120`.
@@ -62,9 +64,12 @@ Add one stdio MCP entry per upstream server:
 command = "/Users/blib/.local/bin/codex-zai-proxy"
 args = [
   "--upstream-url", "https://api.z.ai/api/mcp/zread/mcp",
+  "--env-file", "/path/to/private.env",
   "--bearer-token-env", "ZAI_MCP_TOKEN",
 ]
 ```
+
+`--env-file` is useful for GUI-launched Codex sessions because desktop apps often do not inherit shell environment variables.
 
 For the Z.AI MCP endpoints:
 
@@ -73,6 +78,7 @@ For the Z.AI MCP endpoints:
 command = "/Users/blib/.local/bin/codex-zai-proxy"
 args = [
   "--upstream-url", "https://api.z.ai/api/mcp/web_reader/mcp",
+  "--env-file", "/path/to/private.env",
   "--bearer-token-env", "ZAI_MCP_TOKEN",
 ]
 
@@ -80,6 +86,7 @@ args = [
 command = "/Users/blib/.local/bin/codex-zai-proxy"
 args = [
   "--upstream-url", "https://api.z.ai/api/mcp/web_search_prime/mcp",
+  "--env-file", "/path/to/private.env",
   "--bearer-token-env", "ZAI_MCP_TOKEN",
 ]
 
@@ -87,6 +94,7 @@ args = [
 command = "/Users/blib/.local/bin/codex-zai-proxy"
 args = [
   "--upstream-url", "https://api.z.ai/api/mcp/zread/mcp",
+  "--env-file", "/path/to/private.env",
   "--bearer-token-env", "ZAI_MCP_TOKEN",
 ]
 ```
@@ -113,6 +121,7 @@ For request messages, the proxy writes one normalized JSON-RPC response to stdou
 ## Security notes
 
 - Prefer `--bearer-token-env` over `--bearer-token`.
+- Prefer `--env-file` for GUI clients instead of embedding secrets in MCP configuration.
 - Logs go to stderr, never stdout, so MCP framing stays clean.
 - The proxy does not persist tokens, session ids, requests, or responses.
 - Avoid `--log-level trace` when handling sensitive prompts or tool arguments.
