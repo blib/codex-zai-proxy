@@ -6,67 +6,45 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: read
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+  contents: write
 
 jobs:
   create-release:
     name: create draft release
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          notes_file="docs/release-notes/${GITHUB_REF_NAME}.md"
-          release_args=(--draft --title "codex-zai-proxy ${GITHUB_REF_NAME}" --verify-tag)
-          if [[ -f "$notes_file" ]]; then
-            release_args+=(--notes-file "$notes_file")
-          else
-            release_args+=(--generate-notes)
-          fi
-
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release delete "$GITHUB_REF_NAME" --yes
           fi
-          gh release create "$GITHUB_REF_NAME" "${release_args[@]}"
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --title "codex-zai-proxy ${GITHUB_REF_NAME}" \
+            --notes ""
 
   build:
-    name: build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    name: build ${{ matrix.asset }}
     needs: create-release
-    timeout-minutes: 30
-    permissions:
-      contents: write
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            exe: ""
-          - os: macos-15-intel
-            target: x86_64-apple-darwin
-            exe: ""
           - os: macos-14
             target: aarch64-apple-darwin
-            exe: ""
+            asset: codex-zai-proxy-macos-arm64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: codex-zai-proxy-linux-x86_64
           - os: windows-2025
             target: x86_64-pc-windows-msvc
-            exe: ".exe"
+            asset: codex-zai-proxy-windows-x86_64.exe
 
     steps:
       - uses: actions/checkout@v6
@@ -75,38 +53,34 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build release binary
+      - name: Build
         run: cargo build --locked --release --target "${{ matrix.target }}"
         shell: bash
 
-      - name: Package release asset
-        run: >
-          python scripts/package-release.py
-          --target "${{ matrix.target }}"
-          --archive-name "codex-zai-proxy-${{ github.ref_name }}-${{ matrix.target }}"
-          --binary-name "codex-zai-proxy${{ matrix.exe }}"
+      - name: Prepare binary
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          source="target/${{ matrix.target }}/release/codex-zai-proxy"
+          if [[ "${{ matrix.asset }}" == *.exe ]]; then
+            source="${source}.exe"
+          fi
+          cp "$source" "dist/${{ matrix.asset }}"
         shell: bash
 
-      - name: Verify local checksum
-        run: python scripts/verify-checksums.py dist
-        shell: bash
-
-      - name: Upload release assets
+      - name: Upload binary
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+        run: gh release upload "$GITHUB_REF_NAME" "dist/${{ matrix.asset }}" --clobber
         shell: bash
 
-  release:
-    name: publish draft release
-    runs-on: ubuntu-latest
+  publish:
+    name: publish release
     needs: build
-    timeout-minutes: 10
-    permissions:
-      contents: write
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Publish release
+      - name: Publish draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest
