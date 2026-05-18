@@ -1,5 +1,8 @@
 # codex-zai-proxy
 
+[![CI](https://github.com/blib/codex-zai-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/blib/codex-zai-proxy/actions/workflows/ci.yml)
+[![Release](https://github.com/blib/codex-zai-proxy/actions/workflows/release.yml/badge.svg)](https://github.com/blib/codex-zai-proxy/actions/workflows/release.yml)
+
 `codex-zai-proxy` is a small Rust compatibility proxy that lets strict stdio MCP clients, including OpenAI Codex, talk to Streamable HTTP MCP servers.
 
 It was built for the practical case where an upstream MCP endpoint is useful, but its HTTP transport behavior is slightly different from what a strict client expects. The proxy runs as a normal stdio MCP server on the client side and forwards JSON-RPC messages to one HTTP MCP upstream.
@@ -23,8 +26,30 @@ This is a focused v0.1 tool. It is intentionally one process per upstream MCP se
 
 ## Install
 
+Most users should install a prebuilt binary from GitHub Releases. This does not require Rust or Cargo on the client machine.
+
+Release downloads:
+
+```text
+https://github.com/blib/codex-zai-proxy/releases/latest
+```
+
+Detailed installation instructions:
+
+```text
+docs/install.md
+```
+
+LLM/agent installation playbook:
+
+```text
+docs/llm-install.md
+```
+
+Developers can install from source:
+
 ```bash
-cargo install --path .
+cargo install --git https://github.com/blib/codex-zai-proxy
 ```
 
 For local development:
@@ -130,11 +155,24 @@ For request messages, the proxy writes one normalized JSON-RPC response to stdou
 
 ```bash
 cargo fmt
-cargo test
+cargo test --locked
 cargo clippy --all-targets -- -D warnings
 ```
 
 The core behavior is covered by unit tests for header parsing, bearer token resolution, JSON normalization, SSE parsing, and compatibility handling.
+
+## Releases
+
+Releases are built on GitHub Actions from semantic version tags such as `v0.1.0`.
+
+Each release publishes platform archives plus `.sha256` checksum files for:
+
+- Linux x86_64
+- macOS Intel
+- macOS Apple Silicon
+- Windows x86_64
+
+See `docs/release.md` for the maintainer release process.
 
 ## License
 

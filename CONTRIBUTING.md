@@ -12,9 +12,11 @@ This project is intentionally small. Contributions should preserve the core shap
 
 ```bash
 cargo fmt
-cargo test
+cargo test --locked
 cargo clippy --all-targets -- -D warnings
 ```
+
+Release changes should also preserve the GitHub Actions release workflow and the installation instructions in `docs/install.md` and `docs/llm-install.md`.
 
 ## Good first issues
 

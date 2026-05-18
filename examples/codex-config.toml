@@ -2,6 +2,7 @@
 command = "/Users/blib/.local/bin/codex-zai-proxy"
 args = [
   "--upstream-url", "https://api.z.ai/api/mcp/web_reader/mcp",
+  "--env-file", "/path/to/private.env",
   "--bearer-token-env", "ZAI_MCP_TOKEN",
 ]
 
@@ -9,6 +10,7 @@ args = [
 command = "/Users/blib/.local/bin/codex-zai-proxy"
 args = [
   "--upstream-url", "https://api.z.ai/api/mcp/web_search_prime/mcp",
+  "--env-file", "/path/to/private.env",
   "--bearer-token-env", "ZAI_MCP_TOKEN",
 ]
 
@@ -16,5 +18,6 @@ args = [
 command = "/Users/blib/.local/bin/codex-zai-proxy"
 args = [
   "--upstream-url", "https://api.z.ai/api/mcp/zread/mcp",
+  "--env-file", "/path/to/private.env",
   "--bearer-token-env", "ZAI_MCP_TOKEN",
 ]
