@@ -23,5 +23,6 @@ cargo clippy --all-targets -- -D warnings
 For release-related changes, also inspect:
 
 ```bash
-python scripts/package-release.py --help
+python3 scripts/package-release.py --help
+python3 scripts/verify-checksums.py --help
 ```
